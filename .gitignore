@@ -1,0 +1,39 @@
+# Gradle & Android Studio
+.gradle/
+build/
+**/build/
+.idea/
+*.iml
+.kotlin/
+local.properties
+Captures/
+
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.pytest_cache/
+*.db
+*.sqlite3
+backend/.env
+
+# Node & Admin Web
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS specific
+.DS_Store
+Thumbs.db
+
