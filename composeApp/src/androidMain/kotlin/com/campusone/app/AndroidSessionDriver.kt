@@ -70,3 +70,4 @@ class AndroidSessionDriver(context: Context) : PlatformSessionDriver {
         prefs.edit().putString(KEY_RECENT, serialized).apply()
     }
 }
+

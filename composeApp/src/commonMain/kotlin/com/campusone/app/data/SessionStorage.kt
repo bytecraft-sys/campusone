@@ -59,3 +59,4 @@ object SessionStorage {
         driver?.addRecentAccount(account)
     }
 }
+
