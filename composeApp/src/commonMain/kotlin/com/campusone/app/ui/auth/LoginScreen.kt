@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.campusone.app.AppRole
 import com.campusone.app.data.ApiClient
 import com.campusone.app.data.AuthUser
+import com.campusone.app.data.RecentAccount
+import com.campusone.app.data.SessionStorage
 import com.campusone.app.theme.*
 import kotlinx.coroutines.launch
 
@@ -38,10 +40,12 @@ fun LoginScreen(
     var loginId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    var recentAccounts by remember { mutableStateOf(SessionStorage.getRecentAccounts()) }
 
     fun performLogin(idToUse: String = loginId, passToUse: String = password) {
         if (idToUse.isBlank() || passToUse.isBlank()) {
@@ -66,6 +70,16 @@ fun LoginScreen(
                 } else {
                     AppRole.STUDENT
                 }
+                
+                // Add to persistent recent accounts history
+                SessionStorage.addRecentAccount(
+                    RecentAccount(
+                        loginId = result.user.loginId,
+                        fullName = result.user.fullName,
+                        role = result.user.role
+                    )
+                )
+
                 onLoginSuccess(role, result.user)
             } else {
                 errorMessage = result.errorMessage ?: "Authentication failed. Please verify credentials."
@@ -82,27 +96,27 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             // Institutional Brand Header
             Box(
                 modifier = Modifier
-                    .size(68.dp)
+                    .size(64.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF1E293B))
                     .border(2.dp, IndigoPrimary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "🏛️", fontSize = 32.sp)
+                Text(text = "🏛️", fontSize = 30.sp)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = "CampusOne",
-                fontSize = 28.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
@@ -137,7 +151,7 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
             // White Authentication Card
             Card(
@@ -148,9 +162,9 @@ fun LoginScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(22.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
                             text = "Institutional Sign In",
                             fontSize = 18.sp,
@@ -195,8 +209,8 @@ fun LoginScreen(
                             loginId = it
                             errorMessage = null 
                         },
-                        label = { Text("Institutional Login ID") },
-                        placeholder = { Text("e.g., STU2026001 or TEA101") },
+                        label = { Text("Institutional Login ID / Email") },
+                        placeholder = { Text("e.g., adarsh@rit.com or TEA101") },
                         leadingIcon = { Text("👤", fontSize = 16.sp) },
                         trailingIcon = {
                             if (loginId.isNotEmpty()) {
@@ -250,7 +264,25 @@ fun LoginScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    // Remember Me / Stay Logged In Checkbox
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { rememberMe = !rememberMe }
+                    ) {
+                        Checkbox(
+                            checked = rememberMe,
+                            onCheckedChange = { rememberMe = it },
+                            colors = CheckboxDefaults.colors(checkedColor = IndigoPrimary)
+                        )
+                        Text(
+                            text = "Remember me & keep session logged in",
+                            fontSize = 12.sp,
+                            color = Color(0xFF334155),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     // Sign In Submit Button
                     Button(
@@ -278,12 +310,85 @@ fun LoginScreen(
                         }
                     }
 
-                    HorizontalDivider(color = Color(0xFFF1F5F9), modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(color = Color(0xFFF1F5F9), modifier = Modifier.padding(vertical = 2.dp))
+
+                    // Remembered Logins History Section
+                    if (recentAccounts.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "🕒 Remembered Accounts (Tap to switch):",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF64748B)
+                            )
+
+                            recentAccounts.take(3).forEach { account ->
+                                val isTeacher = account.role.contains("teach") || account.role.contains("fac")
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFF8FAFC))
+                                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            loginId = account.loginId
+                                            password = if (isTeacher) "TeacherPass123!" else "StudentPass123!"
+                                            errorMessage = null
+                                            performLogin(loginId, password)
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isTeacher) Color(0xFF14532D) else IndigoPrimary),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = account.fullName.take(1).uppercase(),
+                                                color = Color.White,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        Column {
+                                            Text(
+                                                text = account.fullName,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF0F172A)
+                                            )
+                                            Text(
+                                                text = "${account.loginId} · ${if (isTeacher) "Faculty" else "Student"}",
+                                                fontSize = 10.sp,
+                                                color = Color(0xFF64748B)
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "Login ›",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = IndigoPrimary
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     // Quick Demo Switcher Section
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Quick Demo Access (One-tap fill):",
+                            text = "Quick Demo Access (One-tap):",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF64748B)
@@ -293,7 +398,7 @@ fun LoginScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Student Demo Pill
+                            // Adarsh Student
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -301,17 +406,17 @@ fun LoginScreen(
                                     .background(Color(0xFFEEF2FF))
                                     .border(1.dp, Color(0xFFC7D2FE), RoundedCornerShape(10.dp))
                                     .clickable {
-                                        loginId = "STU2026001"
+                                        loginId = "adarsh@rit.com"
                                         password = "StudentPass123!"
                                         errorMessage = null
-                                        performLogin("STU2026001", "StudentPass123!")
+                                        performLogin("adarsh@rit.com", "StudentPass123!")
                                     }
-                                    .padding(vertical = 10.dp, horizontal = 8.dp),
+                                    .padding(vertical = 8.dp, horizontal = 6.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("🎓 Student Demo", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = IndigoPrimary)
-                                    Text("STU2026001", fontSize = 10.sp, color = Color(0xFF4338CA))
+                                    Text("🎓 Adarsh", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = IndigoPrimary)
+                                    Text("adarsh@rit.com", fontSize = 9.sp, color = Color(0xFF4338CA))
                                 }
                             }
 
@@ -328,12 +433,12 @@ fun LoginScreen(
                                         errorMessage = null
                                         performLogin("TEA101", "TeacherPass123!")
                                     }
-                                    .padding(vertical = 10.dp, horizontal = 8.dp),
+                                    .padding(vertical = 8.dp, horizontal = 6.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("👨‍🏫 Teacher Demo", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = StatusGoodGreen)
-                                    Text("TEA101", fontSize = 10.sp, color = Color(0xFF15803D))
+                                    Text("👨‍🏫 Teacher", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = StatusGoodGreen)
+                                    Text("TEA101", fontSize = 9.sp, color = Color(0xFF15803D))
                                 }
                             }
                         }
@@ -341,7 +446,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Footer
             Text(
@@ -352,4 +457,3 @@ fun LoginScreen(
         }
     }
 }
-

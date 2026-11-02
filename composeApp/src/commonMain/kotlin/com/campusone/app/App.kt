@@ -15,6 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.campusone.app.data.ApiClient
+import com.campusone.app.data.SavedSession
+import com.campusone.app.data.SessionStorage
 import com.campusone.app.theme.CampusOneTheme
 import com.campusone.app.theme.IndigoPrimary
 import com.campusone.app.theme.StatusGoodGreen
@@ -37,10 +39,18 @@ enum class TeacherNavScreen {
 
 @Composable
 fun App() {
-    var isLoggedIn by remember { mutableStateOf(false) }
-    var currentRole by remember { mutableStateOf(AppRole.STUDENT) }
-    var currentUserFullName by remember { mutableStateOf("Shrey Student") }
-    var currentUserLoginId by remember { mutableStateOf("STU2026001") }
+    val initialSession = remember { SessionStorage.getSession() }
+    var isLoggedIn by remember { mutableStateOf(initialSession != null) }
+    var currentRole by remember {
+        mutableStateOf(
+            if (initialSession?.role?.contains("teach") == true || initialSession?.role?.contains("fac") == true)
+                AppRole.TEACHER
+            else
+                AppRole.STUDENT
+        )
+    }
+    var currentUserFullName by remember { mutableStateOf(initialSession?.fullName ?: "Adarsh") }
+    var currentUserLoginId by remember { mutableStateOf(initialSession?.loginId ?: "adarsh@rit.com") }
     
     var studentScreen by remember { mutableStateOf(StudentNavScreen.HOME) }
     var teacherScreen by remember { mutableStateOf(TeacherNavScreen.HOME) }
@@ -51,11 +61,29 @@ fun App() {
         apiStatus = if (res.contains("status") || res.contains("ok")) "Online" else "Connected"
     }
 
+    LaunchedEffect(initialSession) {
+        if (initialSession != null) {
+            if (currentRole == AppRole.STUDENT) {
+                ApiClient.studentToken = initialSession.token
+            } else {
+                ApiClient.teacherToken = initialSession.token
+            }
+        }
+    }
+
     CampusOneTheme {
         if (!isLoggedIn) {
             LoginScreen(
                 apiStatus = apiStatus,
                 onLoginSuccess = { role, user ->
+                    SessionStorage.saveSession(
+                        SavedSession(
+                            loginId = user.loginId,
+                            fullName = user.fullName,
+                            role = user.role,
+                            token = user.token
+                        )
+                    )
                     currentRole = role
                     currentUserFullName = user.fullName
                     currentUserLoginId = user.loginId
@@ -121,6 +149,7 @@ fun App() {
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color(0xFF334155))
                                     .clickable {
+                                        SessionStorage.clearSession()
                                         ApiClient.logout()
                                         isLoggedIn = false
                                     }
@@ -271,6 +300,7 @@ fun App() {
                                     section = "Section A",
                                     semester = "Semester 5",
                                     onSignOut = {
+                                        SessionStorage.clearSession()
                                         ApiClient.logout()
                                         isLoggedIn = false
                                     }
@@ -305,6 +335,7 @@ fun App() {
                                     section = "All",
                                     semester = "Faculty",
                                     onSignOut = {
+                                        SessionStorage.clearSession()
                                         ApiClient.logout()
                                         isLoggedIn = false
                                     }
