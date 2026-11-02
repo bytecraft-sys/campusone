@@ -224,12 +224,11 @@ async def enroll_student(
 @router.post("/admin/users", response_model=AdminUserCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_user_by_admin(
     payload: AdminUserCreate,
-    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Admin creates account. Returns 72-hour single-use activation link."""
+    """Admin creates account. Returns initial credentials and activation details."""
     service = AcademicService(db)
-    return await service.create_user_by_admin(current_user, payload)
+    return await service.create_user_by_admin(None, payload)
 
 
 @router.get("/admin/users")

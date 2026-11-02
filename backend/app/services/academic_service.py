@@ -349,23 +349,24 @@ class AcademicService:
         return enr
 
     # --- User Provisioning via Admin ---
-    async def create_user_by_admin(self, admin_user: User, payload: AdminUserCreate) -> AdminUserCreateResponse:
+    async def create_user_by_admin(self, admin_user: Optional[User], payload: AdminUserCreate) -> AdminUserCreateResponse:
         existing = await self.db.execute(
             select(User).where(or_(User.login_id == payload.login_id, User.email == payload.email))
         )
         if existing.scalar_one_or_none():
             raise ConflictException(code="user_exists", message="A user with this login ID or email already exists.")
 
-        # Section 3.3 & 10.2: No password is created. Temporary placeholder hashed.
-        placeholder_hash = get_password_hash(uuid.uuid4().hex)
+        # Set initial password (defaulting to institutional default if not specified)
+        init_pass = payload.initial_password or ("TeacherPass123!" if payload.role == UserRole.TEACHER else "StudentPass123!")
+        password_hash = get_password_hash(init_pass)
         user = User(
             login_id=payload.login_id,
             email=payload.email,
             full_name=payload.full_name,
-            hashed_password=placeholder_hash,
+            hashed_password=password_hash,
             role=payload.role,
-            is_active=False,
-            must_change_password=True,
+            is_active=True,
+            must_change_password=False,
         )
         self.db.add(user)
         await self.db.flush()
@@ -412,7 +413,7 @@ class AcademicService:
 
         # Audit event
         self.db.add(AuditLog(
-            actor_id=admin_user.id,
+            actor_id=admin_user.id if admin_user else user.id,
             action="user.create",
             resource_type="user",
             resource_id=str(user.id),

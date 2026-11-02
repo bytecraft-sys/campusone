@@ -27,7 +27,8 @@ export const UsersAccountsPage: React.FC = () => {
     id: '',
     role: 'Student',
     sectionOrDept: '',
-    contact: ''
+    contact: '',
+    password: 'StudentPass123!'
   })
   const [successMsg, setSuccessMsg] = useState('')
 
@@ -48,22 +49,23 @@ export const UsersAccountsPage: React.FC = () => {
 
     const newLoginId = formData.id.trim() || `USER${Math.floor(1000 + Math.random() * 9000)}`
     const newName = formData.name.trim() || 'New User'
+    const tempPass = formData.password.trim() || (formData.role === 'Student' ? 'StudentPass123!' : 'TeacherPass123!')
 
     const newRecord: UserItem = {
       name: newName,
       loginId: newLoginId,
       role: formData.role,
       dept: formData.sectionOrDept || (formData.role === 'Student' ? 'Section A' : 'CSE'),
-      status: { type: 'info', label: 'Pending activation' },
+      status: { type: 'good', label: 'Active' },
       lastLogin: '-'
     }
 
     // Immediately update the UI table
     setUsers(prev => [newRecord, ...prev])
-    setSuccessMsg(`Activation link created and dispatched to ${formData.contact || 'contact'}.`)
+    setSuccessMsg(`✓ Account created! Login ID: "${newLoginId}" | Password: "${tempPass}"`)
     setShowDrawer(false)
-    setFormData({ name: '', id: '', role: 'Student', sectionOrDept: '', contact: '' })
-    setTimeout(() => setSuccessMsg(''), 5000)
+    setFormData({ name: '', id: '', role: 'Student', sectionOrDept: '', contact: '', password: 'StudentPass123!' })
+    setTimeout(() => setSuccessMsg(''), 8000)
 
     // Save to Supabase backend in background
     try {
@@ -74,7 +76,8 @@ export const UsersAccountsPage: React.FC = () => {
           full_name: newName,
           login_id: newLoginId,
           email: formData.contact.includes('@') ? formData.contact : `${newLoginId.toLowerCase()}@campusone.edu`,
-          role: formData.role.toUpperCase()
+          role: formData.role.toUpperCase(),
+          initial_password: tempPass
         })
       })
     } catch (err) {
@@ -271,8 +274,19 @@ export const UsersAccountsPage: React.FC = () => {
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                 />
               </div>
+              <div>
+                <label style={{ fontSize: '12px', color: '#64748b', display: 'block', marginBottom: '4px' }}>Initial Temporary Password</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                />
+              </div>
               <div style={{ fontSize: '11px', color: '#64748b' }}>
-                No password is created. A single-use activation link is sent.
+                Default: <code>StudentPass123!</code> for students, <code>TeacherPass123!</code> for faculty.
               </div>
               <button
                 type="submit"
@@ -286,7 +300,7 @@ export const UsersAccountsPage: React.FC = () => {
                   marginTop: '6px'
                 }}
               >
-                Create and send link
+                Create Account
               </button>
             </form>
           </div>

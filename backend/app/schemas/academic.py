@@ -157,6 +157,7 @@ class AdminUserCreate(BaseModel):
     role: UserRole
     department_id: Optional[uuid.UUID] = None  # For teacher
     section_id: Optional[uuid.UUID] = None     # For student enrollment
+    initial_password: Optional[str] = None
 
 
 class AdminUserCreateResponse(BaseModel):

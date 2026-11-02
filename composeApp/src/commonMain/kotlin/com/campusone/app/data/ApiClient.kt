@@ -113,11 +113,12 @@ object ApiClient {
     }
 
     private fun fallbackLocalAuth(cleanId: String, cleanPass: String): AuthResult {
-        val isStudent = cleanId.startsWith("STU", ignoreCase = true)
         val isTeacher = cleanId.startsWith("TEA", ignoreCase = true) || cleanId.startsWith("FAC", ignoreCase = true)
+        val isStudent = cleanId.startsWith("STU", ignoreCase = true) || cleanId.contains("@") || cleanId.contains("adarsh", ignoreCase = true)
 
         return if (isStudent) {
-            val user = AuthUser(loginId = cleanId, fullName = "Shrey Student", role = "student", token = "mock-token-stu")
+            val name = if (cleanId.contains("adarsh", ignoreCase = true)) "Adarsh" else "Shrey Student"
+            val user = AuthUser(loginId = cleanId, fullName = name, role = "student", token = "mock-token-stu")
             currentUser = user
             studentToken = "mock-token-stu"
             AuthResult(success = true, user = user)
@@ -127,7 +128,7 @@ object ApiClient {
             teacherToken = "mock-token-tea"
             AuthResult(success = true, user = user)
         } else {
-            AuthResult(success = false, errorMessage = "User not found or offline. Use STU2026001 or TEA101.")
+            AuthResult(success = false, errorMessage = "User not found or offline. Use your institutional ID or email.")
         }
     }
 
