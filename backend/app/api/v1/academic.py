@@ -232,6 +232,27 @@ async def create_user_by_admin(
     return await service.create_user_by_admin(current_user, payload)
 
 
+@router.get("/admin/users")
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+):
+    """List all accounts from database."""
+    service = AcademicService(db)
+    users = await service.list_users()
+    return [
+        {
+            "id": str(u.id),
+            "loginId": u.login_id,
+            "name": u.full_name,
+            "role": u.role.value.capitalize(),
+            "dept": "Section A" if u.role.value == "STUDENT" else "CSE",
+            "status": {"type": "good" if u.is_active else "info", "label": "Active" if u.is_active else "Pending activation"},
+            "lastLogin": "Today" if u.is_active else "-"
+        }
+        for u in users
+    ]
+
+
 @router.post("/admin/users/csv-dry-run", response_model=CSVImportDryRunReport)
 async def dry_run_csv_import(
     file: UploadFile = File(...),

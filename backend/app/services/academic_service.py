@@ -431,6 +431,10 @@ class AcademicService:
             expires_at=expires_at.isoformat(),
         )
 
+    async def list_users(self) -> List[User]:
+        result = await self.db.execute(select(User).order_by(User.created_at.desc()))
+        return list(result.scalars().all())
+
     async def dry_run_csv_import(self, csv_content: str) -> CSVImportDryRunReport:
         """Section 3.3: CSV import dry-run validation report before confirming."""
         reader = csv.DictReader(io.StringIO(csv_content))

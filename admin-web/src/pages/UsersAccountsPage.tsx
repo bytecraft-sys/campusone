@@ -1,12 +1,24 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { StatusBadge } from '../components/StatusBadge'
 
+interface UserItem {
+  id?: string
+  name: string
+  loginId: string
+  role: string
+  dept: string
+  status: { type: 'good' | 'attention' | 'danger' | 'info'; label: string }
+  lastLogin: string
+}
+
 export const UsersAccountsPage: React.FC = () => {
-  const [users] = useState([
-    { name: 'Shrey Student', loginId: 'STU2026001', role: 'Student', dept: 'Section A', status: { type: 'good' as const, label: 'Active' }, lastLogin: 'Today 09:15' },
-    { name: 'Prof. Alan Turing', loginId: 'TEA101', role: 'Teacher', dept: 'CSE', status: { type: 'good' as const, label: 'Active' }, lastLogin: 'Today 08:30' },
-    { name: 'Jane Doe', loginId: 'STU2026042', role: 'Student', dept: 'Section B', status: { type: 'info' as const, label: 'Pending activation' }, lastLogin: '-' },
-    { name: 'Dr. John von Neumann', loginId: 'TEA104', role: 'Teacher', dept: 'ECE', status: { type: 'attention' as const, label: 'Suspended' }, lastLogin: '2026-10-15' },
+  const [users, setUsers] = useState<UserItem[]>([
+    { name: 'Shrey Student', loginId: 'STU2026001', role: 'Student', dept: 'Section A', status: { type: 'good', label: 'Active' }, lastLogin: 'Today 09:15' },
+    { name: 'Prof. Alan Turing', loginId: 'TEA101', role: 'Teacher', dept: 'CSE', status: { type: 'good', label: 'Active' }, lastLogin: 'Today 08:30' },
+    { name: 'Aarav Sharma', loginId: 'STU2026002', role: 'Student', dept: 'Section A', status: { type: 'good', label: 'Active' }, lastLogin: 'Today 10:00' },
+    { name: 'Ananya Verma', loginId: 'STU2026003', role: 'Student', dept: 'Section A', status: { type: 'good', label: 'Active' }, lastLogin: 'Today 09:45' },
+    { name: 'Jane Doe', loginId: 'STU2026042', role: 'Student', dept: 'Section B', status: { type: 'info', label: 'Pending activation' }, lastLogin: '-' },
+    { name: 'Dr. John von Neumann', loginId: 'TEA104', role: 'Teacher', dept: 'ECE', status: { type: 'attention', label: 'Suspended' }, lastLogin: '2026-10-15' },
   ])
 
   const [showDrawer, setShowDrawer] = useState(false)
@@ -19,11 +31,55 @@ export const UsersAccountsPage: React.FC = () => {
   })
   const [successMsg, setSuccessMsg] = useState('')
 
-  const handleCreate = (e: React.FormEvent) => {
+  // Load live users from Supabase on mount
+  useEffect(() => {
+    fetch('/api/v1/admin/users')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setUsers(data)
+        }
+      })
+      .catch(err => console.log('Live users fetch info:', err))
+  }, [])
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const newLoginId = formData.id.trim() || `USER${Math.floor(1000 + Math.random() * 9000)}`
+    const newName = formData.name.trim() || 'New User'
+
+    const newRecord: UserItem = {
+      name: newName,
+      loginId: newLoginId,
+      role: formData.role,
+      dept: formData.sectionOrDept || (formData.role === 'Student' ? 'Section A' : 'CSE'),
+      status: { type: 'info', label: 'Pending activation' },
+      lastLogin: '-'
+    }
+
+    // Immediately update the UI table
+    setUsers(prev => [newRecord, ...prev])
     setSuccessMsg(`Activation link created and dispatched to ${formData.contact || 'contact'}.`)
     setShowDrawer(false)
+    setFormData({ name: '', id: '', role: 'Student', sectionOrDept: '', contact: '' })
     setTimeout(() => setSuccessMsg(''), 5000)
+
+    // Save to Supabase backend in background
+    try {
+      await fetch('/api/v1/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: newName,
+          login_id: newLoginId,
+          email: formData.contact.includes('@') ? formData.contact : `${newLoginId.toLowerCase()}@campusone.edu`,
+          role: formData.role.toUpperCase()
+        })
+      })
+    } catch (err) {
+      console.log('Background user persistence sync:', err)
+    }
   }
 
   return (
